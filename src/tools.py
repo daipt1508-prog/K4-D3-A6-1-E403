@@ -1,49 +1,83 @@
 """
 🛠️ TOOL REGISTRY & SCHEMAS (Dành cho Role 2: Tool & Spec Engineer)
-Nơi khai báo tất cả các "món đồ nghề" mà ReAct Agent có thể gọi.
+Chủ đề 3: Trợ Lý Nắm Bắt Tính Cách & Chọn Quà Tặng Phù Hợp
 """
 
-def get_weather(location: str) -> str:
+def analyze_personality(personality_trait: str) -> str:
     """
-    Tra cứu thời tiết hiện tại của một thành phố.
+    Phân tích đặc điểm tính cách / MBTI / sở thích để đưa ra gợi ý gu quà tặng phù hợp.
     
     Args:
-        location (str): Tên thành phố (Ví dụ: 'Hà Nội', 'TP.HCM', 'Đà Nẵng')
+        personality_trait (str): Nhóm tính cách hoặc sở thích (Ví dụ: 'INTJ', 'Hướng nội', 'Thích công nghệ', 'Yêu thiên nhiên')
         
     Returns:
-        str: Thông tin thời tiết chi tiết
+        str: Phân tích gu quà tặng & phong cách phù hợp
     """
-    loc_lower = location.lower()
-    if "hà nội" in loc_lower or "ha noi" in loc_lower:
-        return "Thời tiết Hà Nội: 28°C, Nắng nhẹ, Độ ẩm 65%."
-    elif "hồ chí minh" in loc_lower or "tp.hcm" in loc_lower or "hcm" in loc_lower:
-        return "Thời tiết TP.HCM: 33°C, Nắng nóng, Có mây."
-    elif "đà nẵng" in loc_lower or "da nang" in loc_lower:
-        return "Thời tiết Đà Nẵng: 30°C, Gió nhẹ, Mát mẻ."
+    trait_lower = personality_trait.lower()
+    if "intj" in trait_lower or "công nghệ" in trait_lower or "lập trình" in trait_lower:
+        return "Đặc điểm: Tư duy logic, thích sự tiện ích & tối giản. Gu quà: Đồ công nghệ, bàn phím cơ, sách chuyên ngành, tai nghe chống ồn."
+    elif "enfp" in trait_lower or "sáng tạo" in trait_lower or "nghệ thuật" in trait_lower:
+        return "Đặc điểm: Hướng ngoại, thích sự độc đáo & cảm xúc. Gu quà: Đồ handmade, máy chụp ảnh lấy liền, vé workshop nghệ thuật."
+    elif "isfj" in trait_lower or "tinh tế" in trait_lower or "chăm sóc" in trait_lower:
+        return "Đặc điểm: Chu đáo, thích sự ấm áp & ứng dụng thực tế. Gu quà: Nến thơm, bộ pha trà/coffee, khăn quàng, bình giữ nhiệt cao cấp."
     else:
-        return f"LỖI: Không tìm thấy dữ liệu thời tiết cho địa điểm '{location}'."
+        return f"Phân tích cơ bản cho '{personality_trait}': Nên chọn quà có tính ứng dụng cao, thiết kế tinh tế hoặc theo sở thích cá nhân."
 
 
-def search_flights(origin: str, destination: str) -> str:
+def search_gift_catalog(category: str, max_budget: int = 1000000) -> str:
     """
-    Tra cứu chuyến bay giữa hai địa điểm.
+    Tra cứu danh sách quà tặng trong kho theo danh mục/sở thích và ngân sách tối đa.
     
     Args:
-        origin (str): Nơi đi (Ví dụ: 'TP.HCM')
-        destination (str): Nơi đến (Ví dụ: 'Hà Nội')
+        category (str): Danh mục hoặc sở thích (Ví dụ: 'công nghệ', 'sách', 'nến thơm', 'handmade')
+        max_budget (int): Ngân sách tối đa tính bằng VNĐ (Mặc định: 1,000,000 VNĐ)
         
     Returns:
-        str: Danh sách chuyến bay khả dụng và giá vé
+        str: Danh sách các món quà phù hợp kèm giá tiền
     """
-    return (
-        f"Chuyến bay từ {origin} -> {destination} ngày mai:\n"
-        f"1. VN123 (08:00) - Giá: 1,500,000 VNĐ (Còn vé)\n"
-        f"2. VJ456 (14:30) - Giá: 1,200,000 VNĐ (Còn vé)"
-    )
+    cat_lower = category.lower()
+    if "công nghệ" in cat_lower or "tai nghe" in cat_lower or "bàn phím" in cat_lower:
+        return (
+            f"Danh sách quà [Công nghệ] (Ngân sách <= {max_budget:,} VNĐ):\n"
+            f"1. Tai nghe Bluetooth Earbuds - Giá: 750,000 VNĐ\n"
+            f"2. Bàn phím cơ Bluetooth Keychron - Giá: 1,800,000 VNĐ\n"
+            f"3. Sạc dự phòng Anker 10000mAh - Giá: 450,000 VNĐ"
+        )
+    elif "nến thơm" in cat_lower or "tinh dầu" in cat_lower or "chăm sóc" in cat_lower:
+        return (
+            f"Danh sách quà [Chăm sóc/Thư giãn] (Ngân sách <= {max_budget:,} VNĐ):\n"
+            f"1. Set Nến thơm & Tinh dầu thư giãn Organic - Giá: 350,000 VNĐ\n"
+            f"2. Bình giữ nhiệt Lock&Lock 500ml - Giá: 280,000 VNĐ"
+        )
+    else:
+        return (
+            f"Danh sách quà tổng hợp theo chủ đề '{category}' (Ngân sách <= {max_budget:,} VNĐ):\n"
+            f"1. Sách bestseller về phát triển bản thân - Giá: 180,000 VNĐ\n"
+            f"2. Khung ảnh kỉ niệm kèm đèn LED - Giá: 250,000 VNĐ"
+        )
+
+
+def check_gift_stock(gift_name: str) -> str:
+    """
+    Kiểm tra tình trạng tồn kho và giao hàng của một món quà cụ thể.
+    
+    Args:
+        gift_name (str): Tên món quà cần kiểm tra (Ví dụ: 'Tai nghe Bluetooth Earbuds', 'Set Nến thơm')
+        
+    Returns:
+        str: Tình trạng kho (Còn hàng / Hết hàng) và thời gian giao dự kiến
+    """
+    name_lower = gift_name.lower()
+    if "bàn phím" in name_lower:
+        return f"Tình trạng '{gift_name}': ❌ HẾT HÀNG (Dự kiến nhập hàng sau 7 ngày)."
+    else:
+        return f"Tình trạng '{gift_name}': ✅ CÒN HÀNG (Sẵn sàng giao trong 24h)."
 
 
 # Danh sách các tool được đăng ký để Agent sử dụng
 AVAILABLE_TOOLS = {
-    "get_weather": get_weather,
-    "search_flights": search_flights,
+    "analyze_personality": analyze_personality,
+    "search_gift_catalog": search_gift_catalog,
+    "check_gift_stock": check_gift_stock,
 }
+
