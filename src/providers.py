@@ -29,17 +29,25 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model_name = model or os.getenv("LLM_MODEL") or "gemini-2.5-flash"
-        
+
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         if not self.api_key or self.api_key == "your_gemini_api_key_here":
             return "[Gemini Error]: Chưa cấu hình GEMINI_API_KEY trong file .env!"
         try:
             from google import genai
+            from google.genai import types  # <-- thêm import này ở đầu hàm hoặc đầu file
+
             client = genai.Client(api_key=self.api_key)
             contents = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+
             response = client.models.generate_content(
                 model=self.model_name,
-                contents=contents
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level="minimal"   # <-- mức thinking thấp nhất cho Gemini 3.x
+                    )
+                ),
             )
             return response.text
         except Exception as e:
