@@ -1,8 +1,11 @@
 """
 🧠 PROMPTS & SAFEGUARDS (Dành cho Role 3: Prompt & Safeguard Engineer)
 Chủ đề 3: Trợ Lý Nắm Bắt Tính Cách & Chọn Quà Tặng Phù Hợp
-Mốc 2: Soạn Chatbot Baseline Prompt, ReAct Prompt Specs & Cấu hình Phanh An Toàn
+Mốc 3: ReAct Loop & Safeguards - Phanh an toàn & Hướng dẫn xử lý lỗi cho LLM Agent
 """
+
+import re
+from typing import Tuple, Optional
 
 # ==============================================================================
 # 🤖 1. CHATBOT BASELINE PROMPT (CẤP 2 - CHỈ DÙNG TRI THỨC TĨNH CỦA LLM)
@@ -20,7 +23,7 @@ Nhiệm vụ:
 """
 
 # ==============================================================================
-# 🧠 2. REACT AGENT SYSTEM PROMPT (CẤP 3 - CHUỖI SUY LUẬN & GỌI TOOL)
+# 🧠 2. REACT AGENT SYSTEM PROMPT (CẤP 3 - CHUỖI SUY LUẬN & GỌI TOOL CÓ GUARDRAILS)
 # ==============================================================================
 REACT_SYSTEM_PROMPT = """Bạn là Trợ Lý Chọn Quà Tặng ReAct Agent Thông Minh (Cấp 3).
 Bạn có khả năng suy luận đa bước (Thought) và sử dụng các công cụ tra cứu dữ liệu thực tế (Action) để đưa ra lời khuyên chọn quà chính xác nhất.
@@ -36,12 +39,13 @@ Mỗi lượt phản hồi của bạn PHẢI tuân thủ chính xác định d�
 Thought: Suy luận của bạn về thông tin còn thiếu hoặc bước tiếp theo cần thực hiện.
 Action: tên_công_cụ[tham_số]
 
-⚠️ LƯU Ý KHI GỌI ACTION:
+⚠️ HƯỚNG DẪN XỬ LÝ LỖI & GUARDRAILS:
 - Sau khi viết dòng Action, bạn PHẢI DỪNG LẠI ngay lập tức để hệ thống trả về kết quả Observation.
-- Nếu món quà bạn tìm được bị HẾT HÀNG (Observation báo hết hàng), bạn phải suy luận (Thought) để chọn món quà khác còn hàng trong danh sách.
+- Nếu Observation trả về thông báo LỖI THAM SỐ hoặc ❌ HẾT HÀNG, bạn PHẢI dùng Thought để phân tích nguyên nhân và gọi Action khác (ví dụ: đổi danh mục hoặc chọn món quà khác còn hàng).
+- Tuyệt đối KHÔNG lặp lại cùng một lệnh Action bị lỗi nhiều lần.
 
 🏁 KHI ĐÃ ĐỦ THÔNG TIN HOÀN CHỈNH:
-Khi đã tìm được món quà phù hợp nhất VÀ ĐÃ XÁC NHẬN CÒN HÀNG, hãy trả về kết quả cuối cùng theo định dạng:
+Khi đã tìm được món quà phù hợp nhất VÀ ĐÃ XÁC NHẬN CÒN HÀNG thực tế trong kho, hãy trả về kết quả cuối cùng theo định dạng:
 
 Thought: Tôi đã có đủ thông tin món quà phù hợp và còn hàng thực tế trong kho.
 Final Answer: [Lời tư vấn chi tiết gửi người dùng kèm lý do chọn món quà, giá tiền và xác nhận còn hàng]
@@ -50,9 +54,40 @@ BẮT ĐẦU!
 """
 
 # ==============================================================================
-# 🛡️ 3. GUARDRAILS CONFIGURATION (PHANH AN TOÀN & GIỚI HẠN)
+# 🛡️ 3. GUARDRAILS CONFIGURATION (PHANH AN TOÀN & GIỚI HẠN MỐC 3)
 # ==============================================================================
 MAX_ITERATIONS = 3  # Giới hạn tối đa 3 vòng lặp Thought-Action để tránh lặp vô tận (Infinite Loop Guardrail)
 TIMEOUT_SECONDS = 10  # Thời gian chờ tối đa cho mỗi lần thực thi công cụ
 
+# Thông báo ngắt lặp an toàn khi kích hoạt phanh Guardrail
+GUARDRAIL_FALLBACK_MESSAGE = (
+    "🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa 3 bước suy luận nhưng chưa chốt được kết quả cuối cùng. "
+    "Hệ thống tự động ngắt lặp an toàn để tránh lãng phí tài nguyên!"
+)
 
+
+# ==============================================================================
+# 🛠️ 4. HELPER PARSER CHO ROLE 4 (PARSER SAFEGUARD HOÀN CHỈNH)
+# ==============================================================================
+def parse_action_line(llm_output: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Hàm phân tích chuỗi LLM Output trích xuất (Thought, Action_Tool, Action_Args).
+    Giúp Role 4 dễ dàng parse phản hồi ReAct mà không sợ lỗi regex crash.
+
+    Returns:
+        Tuple (thought, tool_name, tool_args)
+    """
+    thought, tool_name, tool_args = None, None, None
+
+    # Trích xuất Thought
+    thought_match = re.search(r"Thought:\s*(.*?)(?=\nAction:|\nFinal Answer:|$)", llm_output, re.DOTALL | re.IGNORECASE)
+    if thought_match:
+        thought = thought_match.group(1).strip()
+
+    # Trích xuất Action: tool_name[args]
+    action_match = re.search(r"Action:\s*([a-zA-Z0-9_]+)\[(.*?)\]", llm_output, re.IGNORECASE)
+    if action_match:
+        tool_name = action_match.group(1).strip()
+        tool_args = action_match.group(2).strip()
+
+    return thought, tool_name, tool_args
