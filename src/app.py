@@ -19,7 +19,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # Import các thành phần từ file của Role 2, Role 3 & Multi-Provider Adapter
-from tools import AVAILABLE_TOOLS, get_weather, search_flights
+from tools import AVAILABLE_TOOLS, analyze_personality, search_gift_catalog, check_gift_stock
 from prompts import CHATBOT_BASELINE_PROMPT, REACT_SYSTEM_PROMPT, MAX_ITERATIONS
 from providers import get_llm_provider
 
@@ -29,13 +29,14 @@ def load_test_cases():
     """Đọc bộ test cases từ config/test_cases.json của Role 1"""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(base_dir, "config", "test_cases.json")
-    
+
     # Fallback kiểm tra nếu file ở thư mục hiện tại
     if not os.path.exists(config_path):
         config_path = "test_cases.json"
-        
+
     with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+        return data["test_cases"]
 
 
 def run_baseline_chatbot(user_query: str, provider):
@@ -60,18 +61,18 @@ def run_react_agent(user_query: str, provider):
     while step < MAX_ITERATIONS:
         step += 1
         print(f"\n--- 🔄 Vòng lặp ReAct (Step {step}/{MAX_ITERATIONS}) ---")
-        
+
         if step == 1:
-            print("🧠 Thought: Câu hỏi này cần tra cứu thời tiết thời gian thực.")
-            print("🛠️ Action: get_weather['Hà Nội']")
-            
+            print("🧠 Thought: Câu hỏi này cần dùng tool để lấy dữ liệu hỗ trợ trả lời.")
+            print("🛠️ Action: analyze_personality['Hướng nội']")
+
             # Thực thi tool
-            obs = get_weather("Hà Nội")
+            obs = analyze_personality("Hướng nội")
             print(f"👁️ Observation: {obs}")
-            
+
         elif step == 2:
-            print("🧠 Thought: Tôi đã có thông tin thời tiết Hà Nội, giờ tôi có thể tư vấn trang phục.")
-            print("🏁 Final Answer: Thời tiết Hà Nội hôm nay 28°C, nắng nhẹ. Bạn nên mặc áo phông thoáng mát!")
+            print("🧠 Thought: Đã có dữ liệu từ tool, có thể tổng hợp Final Answer.")
+            print(f"🏁 Final Answer: {obs}")
             break
             
     if step >= MAX_ITERATIONS:
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
     
     # Chạy thử câu test số 3
-    sample_query = tests[2]["question"]
+    sample_query = tests[2]["input"]
     
     print("--- DEMO 1: CHẠY TRÊN CHATBOT BASELINE ---")
     run_baseline_chatbot(sample_query, provider)
