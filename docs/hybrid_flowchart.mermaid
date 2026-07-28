@@ -1,0 +1,55 @@
+flowchart TD
+    Start([Người dùng nhập câu hỏi]) --> Classify{Phân loại độ phức tạp}
+
+    %% ===================== NHÁNH PHÂN LOẠI =====================
+    Classify -->|"Câu hỏi ĐƠN GIẢN\n(đủ thông tin, không cần tra cứu real-time,\nkhông cần nhiều bước phụ thuộc nhau)"| ChatbotPath
+    Classify -->|"Câu hỏi PHỨC TẠP\n(thiếu thông tin, cần tra catalog/tồn kho,\ncần suy luận đa bước)"| ReActPath
+
+    %% ===================== NHÁNH CHATBOT BASELINE =====================
+    subgraph ChatbotPath["🤖 CHATBOT BASELINE PATH (Cấp 2)"]
+        direction TB
+        CB1["Nạp CHATBOT_BASELINE_PROMPT"] --> CB2["Gọi LLM 1 lượt duy nhất\n(không có Tool, không có Thought/Action)"]
+        CB2 --> CB3{Người dùng hỏi\ngiá/tồn kho real-time?}
+        CB3 -->|Có| CB4["Từ chối lịch sự + khuyên\nkiểm tra trực tiếp trên website\n(Guardrail: giới hạn tri thức tĩnh)"]
+        CB3 -->|Không| CB5["Trả lời tư vấn chung\ndựa trên tri thức nền của LLM"]
+    end
+
+    %% ===================== NHÁNH REACT AGENT =====================
+    subgraph ReActPath["🧠 REACT AGENT PATH (Cấp 3)"]
+        direction TB
+        RA1["Nạp REACT_SYSTEM_PROMPT\n+ khởi tạo scratchpad rỗng, step = 0"] --> RA2["Vòng lặp: step += 1"]
+        RA2 --> RA3["Gọi LLM sinh:\nThought + Action hoặc Final Answer"]
+        RA3 --> RA4{Parser nhận diện\nđược gì?}
+
+        RA4 -->|"Final Answer"| RA5["✅ Trả kết quả cuối cùng\ncho người dùng"]
+        RA4 -->|"Action: tool[args]\nhợp lệ"| RA6["Gọi execute_tool_safely()"]
+        RA4 -->|"Không parse được\nAction hợp lệ"| RA7["Ghi Observation lỗi định dạng\nvào scratchpad"]
+
+        RA6 --> RA8{Tool có nằm trong\nAVAILABLE_TOOLS?}
+        RA8 -->|Có| RA9["Thực thi tool thật:\nanalyze_personality /\nsearch_gift_catalog /\ncheck_gift_stock"]
+        RA8 -->|"Không\n(Guardrail: Tool Allowlist)"| RA10["❌ Trả Observation lỗi:\nTool không tồn tại"]
+
+        RA9 --> RA11["Ghi Observation vào scratchpad"]
+        RA10 --> RA11
+        RA7 --> RA12{"step < MAX_ITERATIONS (3)?"}
+        RA11 --> RA12
+
+        RA12 -->|Có, còn lượt| RA2
+        RA12 -->|"Không, hết lượt\n(Guardrail: MAX_ITERATIONS)"| RA13["🛡️ GUARDRAIL_FALLBACK_MESSAGE\nNgắt lặp an toàn, báo người dùng\nchưa chốt được kết quả"]
+    end
+
+    CB4 --> End([Phản hồi cuối cùng\ntới người dùng])
+    CB5 --> End
+    RA5 --> End
+    RA13 --> End
+
+    %% ===================== STYLE =====================
+    classDef guardrail fill:#ffe0e0,stroke:#cc0000,stroke-width:2px,color:#000
+    classDef success fill:#e0ffe0,stroke:#00802b,stroke-width:2px,color:#000
+    classDef process fill:#e8f0ff,stroke:#1a53ff,stroke-width:1px,color:#000
+    classDef decision fill:#fff3cd,stroke:#cc8400,stroke-width:1px,color:#000
+
+    class CB4,RA10,RA13 guardrail
+    class CB5,RA5 success
+    class CB1,CB2,RA1,RA2,RA3,RA6,RA7,RA9,RA11 process
+    class Classify,CB3,RA4,RA8,RA12 decision

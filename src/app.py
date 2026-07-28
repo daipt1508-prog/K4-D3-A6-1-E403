@@ -115,11 +115,10 @@ if __name__ == "__main__":
     print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
     
     # Chạy thử câu test số 3
-    for i in range(20):
-        sample_query = tests[i]["input"]
-        
-        print("--- DEMO 1: CHẠY TRÊN CHATBOT BASELINE ---")
-        run_baseline_chatbot(sample_query, provider)
-        
-        print("\n--- DEMO 2: CHẠY TRÊN REACT AGENT ---")
-        run_react_agent(sample_query, provider)
+    sample_query = tests[0]["input"]
+    
+    print("--- DEMO 1: CHẠY TRÊN CHATBOT BASELINE ---")
+    run_baseline_chatbot(sample_query, provider)
+    
+    print("\n--- DEMO 2: CHẠY TRÊN REACT AGENT ---")
+    run_react_agent(sample_query, provider)
