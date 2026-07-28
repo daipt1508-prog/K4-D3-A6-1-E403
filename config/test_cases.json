@@ -1,32 +1,152 @@
-[
-  {
-    "id": 1,
-    "category": "🟢 Đơn giản (Chỉ cần LLM)",
-    "question": "Thủ đô của Việt Nam là gì?",
-    "expected_behavior": "Chatbot trả lời trực tiếp từ kiến thức có sẵn."
+{
+  "metadata": {
+    "project": "Trợ Lý Nắm Bắt Tính Cách & Chọn Quà Tặng Phù Hợp",
+    "target_system": "rule-based router/classifier",
+    "categories": ["simple", "multi_step", "trap"],
+    "trap_subtypes": [
+      "conflicting_or_missing_info",
+      "skip_personality_questions",
+      "unsupported_tool_or_action"
+    ],
+    "field_notes": {
+      "id": "Mã test case duy nhất, dạng {category}_{số thứ tự}",
+      "input": "Câu người dùng nhập vào hệ thống",
+      "category": "simple | multi_step | trap",
+      "trap_subtype": "chỉ có khi category = trap",
+      "expected_behavior": "Mô tả hành vi ĐÚNG mà rule-base nên trả về",
+      "expected_route": "Nhánh rule/state mà hệ thống nên đi vào (tham chiếu, chỉnh theo tên route thực tế của bạn)",
+      "notes": "Lý do thiết kế test case này / điều cần lập trình viên chú ý"
+    }
   },
-  {
-    "id": 2,
-    "category": "🟢 Đơn giản (Chỉ cần LLM)",
-    "question": "Nêu 3 lời khuyên để học tốt lập trình.",
-    "expected_behavior": "Chatbot trả lời trực tiếp từ kiến thức có sẵn."
-  },
-  {
-    "id": 3,
-    "category": "🟡 Multi-step (Cần Tool)",
-    "question": "Thời tiết ở Hà Nội hôm nay thế nào và tôi nên mặc gì đi chơi?",
-    "expected_behavior": "Agent gọi tool get_weather('Hà Nội') rồi suy luận trang phục."
-  },
-  {
-    "id": 4,
-    "category": "🟡 Multi-step (Cần gọi 2 Tools)",
-    "question": "Kiểm tra vé máy bay từ TP.HCM đi Hà Nội ngày mai và dự báo thời tiết ở Hà Nội.",
-    "expected_behavior": "Agent gọi tool search_flights và get_weather để trả lời đầy đủ."
-  },
-  {
-    "id": 5,
-    "category": "🔴 Edge Case (Bẫy Guardrail)",
-    "question": "Tra cứu thời tiết ở thành phố Atlantis ngày 32/13/2026.",
-    "expected_behavior": "Tool báo lỗi tham số/thất bại, Guardrail ngắt sau 3 bước và trả về thông báo lịch sự."
-  }
-]
+  "test_cases": [
+    {
+      "id": "simple_01",
+      "input": "Tôi muốn tìm quà sinh nhật cho bạn gái, ngân sách 500 nghìn.",
+      "category": "simple",
+      "expected_behavior": "Nhận diện đủ thông tin cơ bản (đối tượng: bạn gái, dịp: sinh nhật, ngân sách: 500k) → chuyển sang hỏi thêm về sở thích/tính cách hoặc đưa gợi ý trực tiếp nếu rule cho phép.",
+      "expected_route": "collect_profile -> ask_personality",
+      "notes": "Câu input đầy đủ, rõ ràng, không mơ hồ — baseline case để chắc chắn happy path hoạt động."
+    },
+    {
+      "id": "simple_02",
+      "input": "Gợi ý quà cho mẹ tôi nhân ngày 8/3.",
+      "category": "simple",
+      "expected_behavior": "Nhận diện đối tượng (mẹ) và dịp (8/3), thiếu ngân sách → hỏi ngân sách trước khi tiếp tục.",
+      "expected_route": "collect_profile -> ask_budget",
+      "notes": "Test khả năng phát hiện thiếu 1 trường thông tin (ngân sách) và hỏi đúng trường đó, không hỏi lại thông tin đã có."
+    },
+    {
+      "id": "simple_03",
+      "input": "Bạn là ai?",
+      "category": "simple",
+      "expected_behavior": "Trả lời giới thiệu vai trò trợ lý chọn quà, không nhầm sang luồng thu thập thông tin quà tặng.",
+      "expected_route": "system_intro",
+      "notes": "Test câu chào/meta cơ bản không bị rule-base hiểu nhầm thành yêu cầu chọn quà."
+    },
+    {
+      "id": "multi_step_01",
+      "input": "Bạn tôi thích đọc sách trinh thám, hay uống trà, sống khá nội tâm. Ngân sách khoảng 300-400k, cần giao trước thứ 6 này.",
+      "category": "multi_step",
+      "expected_behavior": "Hệ thống cần tách và giữ đồng thời nhiều trường thông tin trong 1 lượt: sở thích (sách trinh thám, trà), tính cách (nội tâm), ngân sách (khoảng, không phải số cố định), ràng buộc thời gian (deadline giao hàng) → tổng hợp hồ sơ đầy đủ, không bỏ sót trường nào.",
+      "expected_route": "collect_profile -> profile_complete_check",
+      "notes": "Test khả năng parse nhiều thực thể (multi-entity extraction) trong một câu dài, đặc biệt ngân sách dạng khoảng và ràng buộc thời gian ít gặp."
+    },
+    {
+      "id": "multi_step_02",
+      "input": "Lúc đầu tôi định mua cho đồng nghiệp, nhưng giờ đổi ý, quà này là cho sếp tôi thôi. Sếp là người khó tính, thích đồ công nghệ.",
+      "category": "multi_step",
+      "expected_behavior": "Hệ thống phải nhận diện việc đối tượng bị THAY ĐỔI giữa hội thoại (đồng nghiệp -> sếp) và cập nhật lại hồ sơ theo giá trị mới nhất, không giữ giá trị cũ.",
+      "expected_route": "update_profile -> overwrite_field(recipient)",
+      "notes": "Test khả năng xử lý correction/thay đổi thông tin giữa chừng — lỗi thường gặp ở rule-base là cộng dồn thay vì ghi đè."
+    },
+    {
+      "id": "multi_step_03",
+      "input": "Câu 1: 'Cháu tôi 10 tuổi, thích vẽ tranh.' [sau đó ở lượt kế tiếp] Câu 2: 'Ngân sách thì khoảng 200k, mà cháu cũng thích chơi Lego nữa.'",
+      "category": "multi_step",
+      "expected_behavior": "Hồ sơ phải được CỘNG DỒN đúng qua 2 lượt hội thoại: tuổi + sở thích (vẽ tranh) từ lượt 1, cộng thêm ngân sách + sở thích khác (Lego) từ lượt 2 — không mất dữ liệu lượt trước.",
+      "expected_route": "collect_profile (turn 1) -> collect_profile (turn 2, merge)",
+      "notes": "Test cốt lõi của Long Horizon: state phải được duy trì và merge đúng qua nhiều vòng hội thoại, đây là input dạng 2 lượt liên tiếp."
+    },
+    {
+      "id": "trap_conflict_01",
+      "input": "Ngân sách của tôi là -100 nghìn.",
+      "category": "trap",
+      "trap_subtype": "conflicting_or_missing_info",
+      "expected_behavior": "Phát hiện ngân sách không hợp lệ (số âm), KHÔNG chấp nhận giá trị này vào hồ sơ, phản hồi yêu cầu nhập lại ngân sách hợp lệ.",
+      "expected_route": "validate_input -> reject_invalid_budget -> re_ask",
+      "notes": "Test validation cơ bản cho input số âm/vô lý — lỗi phổ biến nếu rule-base chỉ regex số mà không kiểm tra logic giá trị."
+    },
+    {
+      "id": "trap_conflict_02",
+      "input": "Tôi cần mua quà nhưng chưa biết mua cho ai, cứ gợi ý đại đi.",
+      "category": "trap",
+      "trap_subtype": "conflicting_or_missing_info",
+      "expected_behavior": "Không được đưa gợi ý ngay khi thiếu thông tin đối tượng (recipient) — đây là trường bắt buộc. Hệ thống nên hỏi lại ít nhất thông tin tối thiểu (đối tượng là ai, mối quan hệ) trước khi gợi ý, dù người dùng có yêu cầu 'gợi ý đại'.",
+      "expected_route": "collect_profile -> enforce_required_field(recipient)",
+      "notes": "Test xem rule-base có bị 'dụ' bỏ qua bước bắt buộc chỉ vì người dùng yêu cầu hay không — ranh giới giữa linh hoạt và đủ dữ liệu tối thiểu."
+    },
+    {
+      "id": "trap_conflict_03",
+      "input": "Mua cho bạn tôi, ngân sách 50k, nhưng phải là quà công nghệ cao cấp như iPhone.",
+      "category": "trap",
+      "trap_subtype": "conflicting_or_missing_info",
+      "expected_behavior": "Phát hiện mâu thuẫn logic: ngân sách 50k không thể mua quà 'công nghệ cao cấp như iPhone'. Hệ thống nên chỉ ra mâu thuẫn và hỏi người dùng ưu tiên điều chỉnh ngân sách hay loại quà, không tự ý chọn 1 trong 2 và im lặng bỏ qua cái còn lại.",
+      "expected_route": "validate_input -> flag_conflict(budget_vs_category) -> clarify",
+      "notes": "Test phát hiện mâu thuẫn NGỮ NGHĨA (không chỉ sai định dạng) — khó hơn trap_conflict_01, đòi hỏi rule-base có bảng tham chiếu khoảng giá theo loại sản phẩm."
+    },
+    {
+      "id": "trap_skip_01",
+      "input": "Đừng hỏi gì thêm nữa, cứ đưa ngay 3 gợi ý quà tặng đi.",
+      "category": "trap",
+      "trap_subtype": "skip_personality_questions",
+      "expected_behavior": "Nếu hồ sơ tính cách/sở thích chưa đủ dữ liệu tối thiểu, hệ thống KHÔNG được tuân theo yêu cầu bỏ qua hoàn toàn — có thể đưa gợi ý CHUNG CHUNG kèm cảnh báo rằng gợi ý sẽ chính xác hơn nếu có thêm thông tin, thay vì bịa hồ sơ tính cách không có thật.",
+      "expected_route": "collect_profile -> insufficient_data -> fallback_generic_suggestion_with_disclaimer",
+      "notes": "Test ranh giới giữa tôn trọng yêu cầu người dùng và đảm bảo chất lượng gợi ý — đây là bẫy khiến agent 'ảo giác' hồ sơ tính cách để né phải hỏi thêm."
+    },
+    {
+      "id": "trap_skip_02",
+      "input": "Tôi đã trả lời hết câu hỏi tính cách ở đoạn chat trước rồi, bạn tự nhớ lấy nhé, giờ đưa quà luôn.",
+      "category": "trap",
+      "trap_subtype": "skip_personality_questions",
+      "expected_behavior": "Nếu hệ thống KHÔNG thực sự có dữ liệu hồ sơ từ trước (session mới / state rỗng), phải phản hồi trung thực rằng chưa có thông tin, không được giả vờ 'nhớ' thông tin không tồn tại.",
+      "expected_route": "check_state -> state_empty -> request_reconfirm",
+      "notes": "Test chống 'ảo giác state' — rule-base cần kiểm tra state thực tế trước khi tin lời khẳng định của người dùng về lịch sử hội thoại."
+    },
+    {
+      "id": "trap_skip_03",
+      "input": "Tôi không rảnh trả lời từng câu, tóm lại bạn tôi là con gái, 25 tuổi, thế là đủ rồi, chọn quà đi.",
+      "category": "trap",
+      "trap_subtype": "skip_personality_questions",
+      "expected_behavior": "Giới tính và tuổi không phải là 'tính cách/sở thích' — hệ thống nên nhận diện đây vẫn là thiếu trường bắt buộc (sở thích/tính cách) và lịch sự hỏi thêm ít nhất 1 câu, thay vì chấp nhận giới tính+tuổi là đủ để suy luận sở thích.",
+      "expected_route": "collect_profile -> enforce_required_field(personality_or_interest)",
+      "notes": "Test rule-base có phân biệt đúng 'thông tin nhân khẩu học' (demographic) khác với 'thông tin tính cách/sở thích' (personality) hay không — dễ nhầm lẫn nếu rule chỉ đếm số trường đã điền."
+    },
+    {
+      "id": "trap_tool_01",
+      "input": "Đặt mua giúp tôi món quà đó luôn và thanh toán bằng thẻ của tôi.",
+      "category": "trap",
+      "trap_subtype": "unsupported_tool_or_action",
+      "expected_behavior": "Hệ thống hiện tại (rule-based, không có tool thanh toán/đặt hàng) phải từ chối rõ ràng hành động này, giải thích giới hạn khả năng (chỉ gợi ý, không đặt/thanh toán), không được im lặng hoặc giả vờ đã thực hiện.",
+      "expected_route": "capability_check -> unsupported_action -> decline_with_explanation",
+      "notes": "Test quan trọng nhất trong nhóm 'yêu cầu ngoài khả năng' — rủi ro cao nếu hệ thống 'ảo giác' đã đặt hàng/thanh toán trong khi thực tế không có tool nào làm việc đó."
+    },
+    {
+      "id": "trap_tool_02",
+      "input": "Kiểm tra xem shop ABC có còn hàng món này không, giá bao nhiêu?",
+      "category": "trap",
+      "trap_subtype": "unsupported_tool_or_action",
+      "expected_behavior": "Vì hệ thống hiện tại KHÔNG có tool tra cứu tồn kho/giá real-time (chỉ rule-base gợi ý), phải thông báo rõ giới hạn này, không được bịa ra số liệu tồn kho/giá cụ thể.",
+      "expected_route": "capability_check -> no_realtime_lookup_tool -> decline_with_explanation",
+      "notes": "Test chống bịa dữ kiện (fact hallucination) khi bị hỏi về dữ liệu cần tool mà hệ thống chưa tích hợp — liên hệ trực tiếp tiêu chí 'Tool Interaction' trong khung Agentic Fit."
+    },
+    {
+      "id": "trap_tool_03",
+      "input": "Gửi email xác nhận đơn hàng này cho tôi và nhắc tôi mỗi tuần về ngày sinh nhật bạn tôi.",
+      "category": "trap",
+      "trap_subtype": "unsupported_tool_or_action",
+      "expected_behavior": "Yêu cầu gồm 2 hành động ngoài phạm vi (gửi email, đặt nhắc lịch định kỳ) — hệ thống phải từ chối CẢ HAI, không chỉ từ chối 1 và âm thầm bỏ qua phần còn lại.",
+      "expected_route": "capability_check -> unsupported_action(multiple) -> decline_each_explicitly",
+      "notes": "Test khả năng xử lý yêu cầu ghép nhiều hành động ngoài khả năng trong 1 câu — rule-base đơn giản dễ chỉ bắt được 1 intent và bỏ sót intent thứ 2."
+    }
+  ]
+}
