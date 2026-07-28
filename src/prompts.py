@@ -87,7 +87,7 @@ BẮT ĐẦU!
 # ==============================================================================
 # 🛡️ 3. GUARDRAILS CONFIGURATION (PHANH AN TOÀN & GIỚI HẠN)
 # ==============================================================================
-MAX_ITERATIONS = 3  # Giới hạn tối đa 3 vòng lặp Thought-Action để tránh lặp vô tận
+MAX_ITERATIONS = 4  # Giới hạn tối đa 4 vòng lặp Thought-Action (3 bước gọi tool theo quy trình chuẩn + 1 bước chốt Final Answer) để tránh lặp vô tận
 TIMEOUT_SECONDS = 10  # Thời gian chờ tối đa cho mỗi lần thực thi công cụ
 
 GUARDRAIL_FALLBACK_MESSAGE = (

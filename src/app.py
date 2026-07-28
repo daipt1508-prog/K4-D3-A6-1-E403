@@ -26,6 +26,8 @@ from prompts import (
     MAX_ITERATIONS,
     GUARDRAIL_FALLBACK_MESSAGE,
     parse_action_line,
+    parse_tool_args,
+    has_final_answer,
 )
 from providers import get_llm_provider
 
@@ -70,16 +72,24 @@ def run_react_agent(user_query: str, provider):
         print(f"\n--- 🔄 Vòng lặp ReAct (Step {step}/{MAX_ITERATIONS}) ---")
 
         prompt = f"Câu hỏi của người dùng: {user_query}\n{scratchpad}"
+        if step == MAX_ITERATIONS:
+            prompt += (
+                "\n⚠️ ĐÂY LÀ LƯỢT SUY LUẬN CUỐI CÙNG. KHÔNG được gọi thêm Action. "
+                "Dựa trên các Observation đã có ở trên, bắt buộc phải trả lời ngay bằng Final Answer."
+            )
         llm_output = provider.generate(prompt, system_prompt=REACT_SYSTEM_PROMPT)
 
         thought, tool_name, tool_args = parse_action_line(llm_output)
         if thought:
             print(f"🧠 Thought: {thought}")
 
-        if "Final Answer:" in llm_output:
-            final_answer = llm_output.split("Final Answer:", 1)[1].strip()
+        final_answer = has_final_answer(llm_output)
+        if final_answer:
             print(f"🏁 Final Answer: {final_answer}")
             return final_answer
+
+        if step == MAX_ITERATIONS:
+            break
 
         if not tool_name:
             print(f"⚠️ Không nhận diện được Action hợp lệ trong phản hồi LLM:\n{llm_output}")
@@ -89,7 +99,7 @@ def run_react_agent(user_query: str, provider):
             )
             continue
 
-        args = [a.strip().strip("'\"") for a in tool_args.split(",")] if tool_args else []
+        args = parse_tool_args(tool_args)
         print(f"🛠️ Action: {tool_name}[{tool_args}]")
 
         obs = execute_tool_safely(tool_name, *args)
@@ -114,8 +124,8 @@ if __name__ == "__main__":
     tests = load_test_cases()
     print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
     
-    # Chạy thử câu test số 3
-    for i in range(20):
+    # Chạy thử toàn bộ Test Cases
+    for i in range(len(tests)):
         sample_query = tests[i]["input"]
         
         print("--- DEMO 1: CHẠY TRÊN CHATBOT BASELINE ---")
